@@ -1,10 +1,8 @@
 import socketio
 import eventlet
+import json
 
 sio = socketio.Server()
-static_files = {
-    
-}
 app = socketio.WSGIApp(sio)
 
 #class Client:
@@ -51,6 +49,9 @@ def client_data(sid, data):
     cliend_sid = sid
     print("client_os: " + client_os)
     print("client_ip: " + client_ip)
-    #access the client list
+    with open("client_list.json", "w") as client_list:
+        client_list_json = json.loads(client_list.read())
+        client_list_json.update({"client_data": {"sid": sid, "ip": client_ip}})
+        json.dump(client_list_json, client_list, indent = 4)
 
 eventlet.wsgi.server(eventlet.listen(('localhost', 5000)), app)
